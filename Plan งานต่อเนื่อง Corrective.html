@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plan งานต่อเนื่อง Corrective BKK</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-group label {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 0.9em;
+        }
+
+        select, input {
+            padding: 8px 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .add-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .form-group input, .form-group textarea {
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-delete {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .btn-edit {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            padding: 5px 10px;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+
+        .btn-save {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            padding: 5px 10px;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+
+        .btn-cancel {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+            padding: 5px 10px;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+
+        .edit-input {
+            width: 100%;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .edit-textarea {
+            width: 100%;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+            resize: vertical;
+            min-height: 40px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            padding: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        th {
+            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e9ecef;
+            transition: background-color 0.3s;
+        }
+
+        tr:hover td {
+            background-color: #f8f9fa;
+        }
+
+        .summary {
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .summary-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .summary-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .summary-card h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .summary-card .number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+            font-size: 1.2em;
+        }
+
+        @media (max-width: 768px) {
+            .filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .add-form {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Plan งานต่อเนื่อง Corrective BKK</h1>
+            <p>ระบบจัดการและติดตามการทำงาน</p>
+        </div>
+
+        <div class="controls">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="yearFilter">ปี:</label>
+                    <select id="yearFilter">
+                        <option value="">ทั้งหมด</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="monthFilter">เดือน:</label>
+                    <select id="monthFilter">
+                        <option value="">ทั้งหมด</option>
+                        <option value="01">มกราคม</option>
+                        <option value="02">กุมภาพันธ์</option>
+                        <option value="03">มีนาคม</option>
+                        <option value="04">เมษายน</option>
+                        <option value="05">พฤษภาคม</option>
+                        <option value="06">มิถุนายน</option>
+                        <option value="07">กรกฎาคม</option>
+                        <option value="08">สิงหาคม</option>
+                        <option value="09">กันยายน</option>
+                        <option value="10">ตุลาคม</option>
+                        <option value="11">พฤศจิกายน</option>
+                        <option value="12">ธันวาคม</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="searchInput">ค้นหา:</label>
+                    <input type="text" id="searchInput" placeholder="ค้นหาข้อมูล...">
+                </div>
+                <div class="filter-group">
+                    <button class="btn" onclick="exportToExcel()" style="background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);">
+                        📊 Export Excel
+                    </button>
+                </div>
+            </div>
+
+            <div class="add-form">
+                <div class="form-group">
+                    <label for="dateInput">วันที่เข้าดำเนินการ:</label>
+                    <input type="date" id="dateInput" required>
+                </div>
+                <div class="form-group">
+                    <label for="timeInput">เวลาในการดำเนินการ:</label>
+                    <input type="time" id="timeInput" required>
+                </div>
+                <div class="form-group">
+                    <label for="detailInput">รายละเอียดการดำเนินการ:</label>
+                    <textarea id="detailInput" placeholder="ระบุรายละเอียดการทำงาน..." required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="phoneInput">ชื่อ/เบอร์ติดต่อลูกค้า:</label>
+                    <input type="tel" id="phoneInput" placeholder="08x-xxx-xxxx">
+                </div>
+                <div class="form-group">
+                    <label for="incidentInput">Incident:</label>
+                    <input type="text" id="incidentInput" placeholder="รหัส Incident">
+                </div>
+                <div class="form-group">
+                    <label for="onsiteInput">เจ้าหน้าที่ Onsite:</label>
+                    <input type="text" id="onsiteInput" placeholder="ชื่อเจ้าหน้าที่ Onsite">
+                </div>
+                <div class="form-group">
+                    <label for="receiverInput">เจ้าหน้าที่รับเรื่อง:</label>
+                    <input type="text" id="receiverInput" placeholder="ชื่อเจ้าหน้าที่รับเรื่อง">
+                </div>
+                <div class="form-group">
+                    <button class="btn" onclick="addEntry()">➕ เพิ่มรายการ</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table id="workTable">
+                <thead>
+                    <tr>
+                        <th>ลำดับ</th>
+                        <th>วันที่เข้าดำเนินการ</th>
+                        <th>เวลาในการดำเนินการ</th>
+                        <th>รายละเอียดการดำเนินการ</th>
+                        <th>ชื่อ/เบอร์ติดต่อลูกค้า</th>
+                        <th>Incident</th>
+                        <th>เจ้าหน้าที่ Onsite</th>
+                        <th>เจ้าหน้าที่รับเรื่อง</th>
+                        <th>การจัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="9" class="no-data">ยังไม่มีข้อมูล กรุณาเพิ่มรายการงาน</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="summary">
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <h3>รายการทั้งหมด</h3>
+                    <div class="number" id="totalCount">0</div>
+                </div>
+                <div class="summary-card">
+                    <h3>รายการเดือนนี้</h3>
+                    <div class="number" id="monthCount">0</div>
+                </div>
+                <div class="summary-card">
+                    <h3>รายการวันนี้</h3>
+                    <div class="number" id="todayCount">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        let workEntries = [];
+        let currentId = 1;
+        let editingId = null;
+
+        // กำหนดวันที่ปัจจุบัน
+        document.getElementById('dateInput').valueAsDate = new Date();
+
+        // เพิ่มรายการใหม่
+        function addEntry() {
+            const date = document.getElementById('dateInput').value;
+            const time = document.getElementById('timeInput').value;
+            const detail = document.getElementById('detailInput').value;
+            const phone = document.getElementById('phoneInput').value;
+            const incident = document.getElementById('incidentInput').value;
+            const onsite = document.getElementById('onsiteInput').value;
+            const receiver = document.getElementById('receiverInput').value;
+
+            if (!date || !time || !detail) {
+                alert('กรุณากรอกวันที่ เวลา และรายละเอียดการดำเนินการ');
+                return;
+            }
+
+            const entry = {
+                id: currentId++,
+                date: date,
+                time: time,
+                detail: detail,
+                phone: phone,
+                incident: incident,
+                onsite: onsite,
+                receiver: receiver
+            };
+
+            workEntries.push(entry);
+            
+            // ล้างฟอร์ม
+            document.getElementById('timeInput').value = '';
+            document.getElementById('detailInput').value = '';
+            document.getElementById('phoneInput').value = '';
+            document.getElementById('incidentInput').value = '';
+            document.getElementById('onsiteInput').value = '';
+            document.getElementById('receiverInput').value = '';
+            
+            updateDisplay();
+            updateYearFilter();
+            updateSummary();
+        }
+
+        // ลบรายการ
+        function deleteEntry(id) {
+            if (confirm('คุณต้องการลบรายการนี้หรือไม่?')) {
+                workEntries = workEntries.filter(entry => entry.id !== id);
+                editingId = null;
+                updateDisplay();
+                updateSummary();
+            }
+        }
+
+        // แก้ไขรายการ
+        function editEntry(id) {
+            if (editingId !== null && editingId !== id) {
+                cancelEdit();
+            }
+            editingId = id;
+            updateDisplay();
+        }
+
+        // บันทึกการแก้ไข
+        function saveEdit(id) {
+            const entry = workEntries.find(entry => entry.id === id);
+            if (!entry) return;
+
+            entry.date = document.getElementById(`edit-date-${id}`).value;
+            entry.time = document.getElementById(`edit-time-${id}`).value;
+            entry.detail = document.getElementById(`edit-detail-${id}`).value;
+            entry.phone = document.getElementById(`edit-phone-${id}`).value;
+            entry.incident = document.getElementById(`edit-incident-${id}`).value;
+            entry.onsite = document.getElementById(`edit-onsite-${id}`).value;
+            entry.receiver = document.getElementById(`edit-receiver-${id}`).value;
+
+            editingId = null;
+            updateDisplay();
+            updateSummary();
+        }
+
+        // ยกเลิกการแก้ไข
+        function cancelEdit() {
+            editingId = null;
+            updateDisplay();
+        }
+
+        // Export เป็น Excel
+        function exportToExcel() {
+            if (workEntries.length === 0) {
+                alert('ไม่มีข้อมูลสำหรับ Export');
+                return;
+            }
+
+            const exportData = workEntries.map((entry, index) => ({
+                'ลำดับ': index + 1,
+                'วันที่เข้าดำเนินการ': formatThaiDate(entry.date),
+                'เวลาในการดำเนินการ': formatThaiTime(entry.time),
+                'รายละเอียดการดำเนินการ': entry.detail,
+                'ชื่อ/เบอร์ติดต่อลูกค้า': entry.phone,
+                'Incident': entry.incident,
+                'เจ้าหน้าที่ Onsite': entry.onsite,
+                'เจ้าหน้าที่รับเรื่อง': entry.receiver
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'ตารางลงงาน');
+
+            // กำหนดความกว้างของคอลัมน์
+            const colWidths = [
+                { wch: 8 },   // ลำดับ
+                { wch: 20 },  // วันที่
+                { wch: 15 },  // เวลา
+                { wch: 40 },  // รายละเอียด
+                { wch: 15 },  // เบอร์
+                { wch: 15 },  // Incident
+                { wch: 20 },  // เจ้าหน้าที่ Onsite
+                { wch: 20 }   // เจ้าหน้าที่รับเรื่อง
+            ];
+            ws['!cols'] = colWidths;
+
+            const today = new Date();
+            const fileName = `ตารางลงงาน_${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}.xlsx`;
+            
+            XLSX.writeFile(wb, fileName);
+        }
+
+        // อัปเดตการแสดงผล
+        function updateDisplay() {
+            const tableBody = document.getElementById('tableBody');
+            const yearFilter = document.getElementById('yearFilter').value;
+            const monthFilter = document.getElementById('monthFilter').value;
+            const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+
+            let filteredEntries = workEntries.filter(entry => {
+                const entryDate = new Date(entry.date);
+                const entryYear = entryDate.getFullYear().toString();
+                const entryMonth = String(entryDate.getMonth() + 1).padStart(2, '0');
+                
+                const matchesYear = !yearFilter || entryYear === yearFilter;
+                const matchesMonth = !monthFilter || entryMonth === monthFilter;
+                const matchesSearch = !searchQuery || 
+                    entry.detail.toLowerCase().includes(searchQuery) ||
+                    entry.phone.includes(searchQuery) ||
+                    entry.incident.toLowerCase().includes(searchQuery) ||
+                    entry.onsite.toLowerCase().includes(searchQuery) ||
+                    entry.receiver.toLowerCase().includes(searchQuery);
+
+                return matchesYear && matchesMonth && matchesSearch;
+            });
+
+            // เรียงลำดับตามวันที่ (ใหม่ไปเก่า)
+            filteredEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            if (filteredEntries.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="9" class="no-data">ไม่พบข้อมูลที่ตรงกับเงื่อนไข</td></tr>';
+                return;
+            }
+
+            tableBody.innerHTML = filteredEntries.map((entry, index) => {
+                const formattedDate = formatThaiDate(entry.date);
+                const formattedTime = formatThaiTime(entry.time);
+                
+                if (editingId === entry.id) {
+                    return `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td><input type="date" id="edit-date-${entry.id}" value="${entry.date}" class="edit-input"></td>
+                            <td><input type="time" id="edit-time-${entry.id}" value="${entry.time}" class="edit-input"></td>
+                            <td><textarea id="edit-detail-${entry.id}" class="edit-textarea">${entry.detail}</textarea></td>
+                            <td><input type="tel" id="edit-phone-${entry.id}" value="${entry.phone}" class="edit-input"></td>
+                            <td><input type="text" id="edit-incident-${entry.id}" value="${entry.incident}" class="edit-input"></td>
+                            <td><input type="text" id="edit-onsite-${entry.id}" value="${entry.onsite}" class="edit-input"></td>
+                            <td><input type="text" id="edit-receiver-${entry.id}" value="${entry.receiver}" class="edit-input"></td>
+                            <td>
+                                <button class="btn btn-save" onclick="saveEdit(${entry.id})">
+                                    💾 บันทึก
+                                </button>
+                                <button class="btn btn-cancel" onclick="cancelEdit()">
+                                    ❌ ยกเลิก
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    return `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${formattedDate}</td>
+                            <td>${formattedTime}</td>
+                            <td>${entry.detail}</td>
+                            <td>${entry.phone}</td>
+                            <td>${entry.incident}</td>
+                            <td>${entry.onsite}</td>
+                            <td>${entry.receiver}</td>
+                            <td>
+                                <button class="btn btn-edit" onclick="editEntry(${entry.id})">
+                                    ✏️ แก้ไข
+                                </button>
+                                <button class="btn btn-delete" onclick="deleteEntry(${entry.id})">
+                                    🗑️ ลบ
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }
+            }).join('');
+        }
+
+        // จัดรูปแบบวันที่เป็นภาษาไทย
+        function formatThaiDate(dateString) {
+            const date = new Date(dateString);
+            const thaiMonths = [
+                'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+            ];
+            
+            const day = date.getDate();
+            const month = thaiMonths[date.getMonth()];
+            const year = date.getFullYear() + 543;
+            
+            return `${day} ${month} ${year}`;
+        }
+
+        // จัดรูปแบบเวลาเป็นภาษาไทย
+        function formatThaiTime(timeString) {
+            if (!timeString) return '';
+            const [hours, minutes] = timeString.split(':');
+            return `${hours}:${minutes} น.`;
+        }
+
+        // อัปเดตตัวกรองปี
+        function updateYearFilter() {
+            const yearFilter = document.getElementById('yearFilter');
+            const years = [...new Set(workEntries.map(entry => new Date(entry.date).getFullYear()))];
+            years.sort((a, b) => b - a);
+
+            const currentValue = yearFilter.value;
+            yearFilter.innerHTML = '<option value="">ทั้งหมด</option>';
+            
+            years.forEach(year => {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year + 543;
+                yearFilter.appendChild(option);
+            });
+
+            yearFilter.value = currentValue;
+        }
+
+        // อัปเดตสรุปข้อมูล
+        function updateSummary() {
+            const today = new Date();
+            const todayString = today.toISOString().split('T')[0];
+            const thisMonth = today.getMonth();
+            const thisYear = today.getFullYear();
+
+            const totalCount = workEntries.length;
+            const monthCount = workEntries.filter(entry => {
+                const entryDate = new Date(entry.date);
+                return entryDate.getMonth() === thisMonth && entryDate.getFullYear() === thisYear;
+            }).length;
+            const todayCount = workEntries.filter(entry => entry.date === todayString).length;
+
+            document.getElementById('totalCount').textContent = totalCount;
+            document.getElementById('monthCount').textContent = monthCount;
+            document.getElementById('todayCount').textContent = todayCount;
+        }
+
+        // Event Listeners
+        document.getElementById('yearFilter').addEventListener('change', updateDisplay);
+        document.getElementById('monthFilter').addEventListener('change', updateDisplay);
+        document.getElementById('searchInput').addEventListener('input', updateDisplay);
+
+        // กด Enter ในฟอร์ม
+        document.getElementById('detailInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                addEntry();
+            }
+        });
+
+        // เริ่มต้น
+        updateSummary();
+    </script>
+</body>
+</html>
