@@ -32,12 +32,24 @@
             color: white;
             padding: 30px;
             text-align: center;
+            position: relative;
         }
 
         .header h1 {
             font-size: 2.5em;
             margin-bottom: 10px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .backup-info {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            backdrop-filter: blur(10px);
         }
 
         .controls {
@@ -157,6 +169,27 @@
             margin-right: 5px;
         }
 
+        .btn-backup {
+            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+            padding: 8px 16px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        .btn-restore {
+            background: linear-gradient(135deg, #16a085 0%, #1abc9c 100%);
+            padding: 8px 16px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        .btn-clear {
+            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+            padding: 8px 16px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
         .edit-input {
             width: 100%;
             padding: 5px;
@@ -254,6 +287,60 @@
             font-size: 1.2em;
         }
 
+        .backup-section {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e8f4f8;
+            border-radius: 10px;
+            border-left: 4px solid #3498db;
+        }
+
+        .backup-section h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .backup-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+        }
+
+        .notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .notification.success {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+        }
+
+        .notification.error {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        .notification.info {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        }
+
         @media (max-width: 768px) {
             .filter-row {
                 flex-direction: column;
@@ -267,6 +354,16 @@
             .header h1 {
                 font-size: 2em;
             }
+
+            .backup-info {
+                position: static;
+                margin-top: 10px;
+                text-align: center;
+            }
+
+            .backup-buttons {
+                justify-content: center;
+            }
         }
     </style>
 </head>
@@ -275,6 +372,10 @@
         <div class="header">
             <h1>📊 Plan งานต่อเนื่อง Corrective BKK</h1>
             <p>ระบบจัดการและติดตามการทำงาน</p>
+            <div class="backup-info">
+                <div>💾 ข้อมูลบันทึกอัตโนมัติ</div>
+                <div id="lastSaved">บันทึกล่าสุด: -</div>
+            </div>
         </div>
 
         <div class="controls">
@@ -347,6 +448,22 @@
                     <button class="btn" onclick="addEntry()">➕ เพิ่มรายการ</button>
                 </div>
             </div>
+
+            <div class="backup-section">
+                <h4>📁 จัดการข้อมูล</h4>
+                <div class="backup-buttons">
+                    <button class="btn btn-backup" onclick="backupData()">
+                        💾 สำรองข้อมูล
+                    </button>
+                    <button class="btn btn-restore" onclick="document.getElementById('fileInput').click()">
+                        📁 กู้คืนข้อมูล
+                    </button>
+                    <button class="btn btn-clear" onclick="clearAllData()">
+                        🗑️ ล้างข้อมูลทั้งหมด
+                    </button>
+                    <input type="file" id="fileInput" class="file-input" accept=".json" onchange="restoreData(event)">
+                </div>
+            </div>
         </div>
 
         <div class="table-container">
@@ -390,11 +507,177 @@
         </div>
     </div>
 
+    <div id="notification" class="notification"></div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
         let workEntries = [];
         let currentId = 1;
         let editingId = null;
+
+        // ฟังก์ชันสำหรับการแสดงแจ้งเตือน
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // ฟังก์ชันสำหรับบันทึกข้อมูลลง localStorage
+        function saveDataToLocal() {
+            try {
+                const dataToSave = {
+                    workEntries: workEntries,
+                    currentId: currentId,
+                    lastSaved: new Date().toLocaleString('th-TH')
+                };
+                localStorage.setItem('workTrackingData', JSON.stringify(dataToSave));
+                
+                // อัปเดตข้อมูลการบันทึกล่าสุด
+                document.getElementById('lastSaved').textContent = 
+                    `บันทึกล่าสุด: ${dataToSave.lastSaved}`;
+                
+                return true;
+            } catch (error) {
+                console.error('Error saving data:', error);
+                showNotification('เกิดข้อผิดพลาดในการบันทึกข้อมูล', 'error');
+                return false;
+            }
+        }
+
+        // ฟังก์ชันสำหรับโหลดข้อมูลจาก localStorage
+        function loadDataFromLocal() {
+            try {
+                const savedData = localStorage.getItem('workTrackingData');
+                if (savedData) {
+                    const parsedData = JSON.parse(savedData);
+                    workEntries = parsedData.workEntries || [];
+                    currentId = parsedData.currentId || 1;
+                    
+                    // อัปเดตข้อมูลการบันทึกล่าสุด
+                    if (parsedData.lastSaved) {
+                        document.getElementById('lastSaved').textContent = 
+                            `บันทึกล่าสุด: ${parsedData.lastSaved}`;
+                    }
+                    
+                    // แก้ไข currentId ให้ไม่ซ้ำกับข้อมูลที่มีอยู่
+                    if (workEntries.length > 0) {
+                        const maxId = Math.max(...workEntries.map(entry => entry.id));
+                        currentId = maxId + 1;
+                    }
+                    
+                    return true;
+                }
+            } catch (error) {
+                console.error('Error loading data:', error);
+                showNotification('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'error');
+            }
+            return false;
+        }
+
+        // ฟังก์ชันสำรองข้อมูล
+        function backupData() {
+            if (workEntries.length === 0) {
+                showNotification('ไม่มีข้อมูลสำหรับสำรอง', 'error');
+                return;
+            }
+
+            const backupData = {
+                workEntries: workEntries,
+                currentId: currentId,
+                backupDate: new Date().toISOString(),
+                version: '1.0'
+            };
+
+            const dataStr = JSON.stringify(backupData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            
+            const today = new Date();
+            const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            const timeStr = `${String(today.getHours()).padStart(2, '0')}-${String(today.getMinutes()).padStart(2, '0')}`;
+            const filename = `ข้อมูลงาน_${dateStr}_${timeStr}.json`;
+
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = filename;
+            link.click();
+            
+            showNotification('สำรองข้อมูลเรียบร้อยแล้ว', 'success');
+        }
+
+        // ฟังก์ชันกู้คืนข้อมูล
+        function restoreData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const backupData = JSON.parse(e.target.result);
+                    
+                    // ตรวจสอบความถูกต้องของข้อมูล
+                    if (!backupData.workEntries || !Array.isArray(backupData.workEntries)) {
+                        throw new Error('ข้อมูลไม่ถูกต้อง');
+                    }
+
+                    // ยืนยันการกู้คืน
+                    if (confirm(`คุณต้องการกู้คืนข้อมูลจากไฟล์นี้หรือไม่?\n\nข้อมูลปัจจุบัน: ${workEntries.length} รายการ\nข้อมูลในไฟล์: ${backupData.workEntries.length} รายการ\n\n⚠️ ข้อมูลปัจจุบันจะถูกแทนที่!`)) {
+                        workEntries = backupData.workEntries;
+                        currentId = backupData.currentId || 1;
+                        
+                        // แก้ไข currentId ให้ไม่ซ้ำ
+                        if (workEntries.length > 0) {
+                            const maxId = Math.max(...workEntries.map(entry => entry.id));
+                            currentId = maxId + 1;
+                        }
+                        
+                        // บันทึกและอัปเดตการแสดงผล
+                        saveDataToLocal();
+                        updateDisplay();
+                        updateYearFilter();
+                        updateSummary();
+                        
+                        showNotification(`กู้คืนข้อมูลเรียบร้อย! โหลด ${workEntries.length} รายการ`, 'success');
+                    }
+                } catch (error) {
+                    console.error('Error restoring data:', error);
+                    showNotification('ไม่สามารถกู้คืนข้อมูลได้ ไฟล์อาจเสียหาย', 'error');
+                }
+            };
+            reader.readAsText(file);
+            
+            // ล้างค่า input
+            event.target.value = '';
+        }
+
+        // ฟังก์ชันล้างข้อมูลทั้งหมด
+        function clearAllData() {
+            if (workEntries.length === 0) {
+                showNotification('ไม่มีข้อมูลให้ล้าง', 'info');
+                return;
+            }
+
+            if (confirm(`คุณแน่ใจหรือไม่ที่จะล้างข้อมูลทั้งหมด?\n\nข้อมูลปัจจุบัน: ${workEntries.length} รายการ\n\n⚠️ การดำเนินการนี้ไม่สามารถยกเลิกได้!`)) {
+                workEntries = [];
+                currentId = 1;
+                editingId = null;
+                
+                // ล้างข้อมูลจาก localStorage
+                localStorage.removeItem('workTrackingData');
+                
+                // อัปเดตการแสดงผล
+                updateDisplay();
+                updateYearFilter();
+                updateSummary();
+                
+                document.getElementById('lastSaved').textContent = 'บันทึกล่าสุด: -';
+                showNotification('ล้างข้อมูลทั้งหมดเรียบร้อยแล้ว', 'info');
+            }
+        }
 
         // กำหนดวันที่ปัจจุบัน
         document.getElementById('dateInput').valueAsDate = new Date();
@@ -410,7 +693,7 @@
             const receiver = document.getElementById('receiverInput').value;
 
             if (!date || !time || !detail) {
-                alert('กรุณากรอกวันที่ เวลา และรายละเอียดการดำเนินการ');
+                showNotification('กรุณากรอกวันที่ เวลา และรายละเอียดการดำเนินการ', 'error');
                 return;
             }
 
@@ -426,6 +709,11 @@
             };
 
             workEntries.push(entry);
+            
+            // บันทึกข้อมูล
+            if (saveDataToLocal()) {
+                showNotification('เพิ่มรายการเรียบร้อยแล้ว', 'success');
+            }
             
             // ล้างฟอร์ม
             document.getElementById('timeInput').value = '';
@@ -445,6 +733,12 @@
             if (confirm('คุณต้องการลบรายการนี้หรือไม่?')) {
                 workEntries = workEntries.filter(entry => entry.id !== id);
                 editingId = null;
+                
+                // บันทึกข้อมูล
+                if (saveDataToLocal()) {
+                    showNotification('ลบรายการเรียบร้อยแล้ว', 'success');
+                }
+                
                 updateDisplay();
                 updateSummary();
             }
@@ -464,223 +758,5 @@
             const entry = workEntries.find(entry => entry.id === id);
             if (!entry) return;
 
-            entry.date = document.getElementById(`edit-date-${id}`).value;
-            entry.time = document.getElementById(`edit-time-${id}`).value;
-            entry.detail = document.getElementById(`edit-detail-${id}`).value;
-            entry.phone = document.getElementById(`edit-phone-${id}`).value;
-            entry.incident = document.getElementById(`edit-incident-${id}`).value;
-            entry.onsite = document.getElementById(`edit-onsite-${id}`).value;
-            entry.receiver = document.getElementById(`edit-receiver-${id}`).value;
-
-            editingId = null;
-            updateDisplay();
-            updateSummary();
-        }
-
-        // ยกเลิกการแก้ไข
-        function cancelEdit() {
-            editingId = null;
-            updateDisplay();
-        }
-
-        // Export เป็น Excel
-        function exportToExcel() {
-            if (workEntries.length === 0) {
-                alert('ไม่มีข้อมูลสำหรับ Export');
-                return;
-            }
-
-            const exportData = workEntries.map((entry, index) => ({
-                'ลำดับ': index + 1,
-                'วันที่เข้าดำเนินการ': formatThaiDate(entry.date),
-                'เวลาในการดำเนินการ': formatThaiTime(entry.time),
-                'รายละเอียดการดำเนินการ': entry.detail,
-                'ชื่อ/เบอร์ติดต่อลูกค้า': entry.phone,
-                'Incident': entry.incident,
-                'เจ้าหน้าที่ Onsite': entry.onsite,
-                'เจ้าหน้าที่รับเรื่อง': entry.receiver
-            }));
-
-            const ws = XLSX.utils.json_to_sheet(exportData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'ตารางลงงาน');
-
-            // กำหนดความกว้างของคอลัมน์
-            const colWidths = [
-                { wch: 8 },   // ลำดับ
-                { wch: 20 },  // วันที่
-                { wch: 15 },  // เวลา
-                { wch: 40 },  // รายละเอียด
-                { wch: 15 },  // เบอร์
-                { wch: 15 },  // Incident
-                { wch: 20 },  // เจ้าหน้าที่ Onsite
-                { wch: 20 }   // เจ้าหน้าที่รับเรื่อง
-            ];
-            ws['!cols'] = colWidths;
-
-            const today = new Date();
-            const fileName = `ตารางลงงาน_${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}.xlsx`;
-            
-            XLSX.writeFile(wb, fileName);
-        }
-
-        // อัปเดตการแสดงผล
-        function updateDisplay() {
-            const tableBody = document.getElementById('tableBody');
-            const yearFilter = document.getElementById('yearFilter').value;
-            const monthFilter = document.getElementById('monthFilter').value;
-            const searchQuery = document.getElementById('searchInput').value.toLowerCase();
-
-            let filteredEntries = workEntries.filter(entry => {
-                const entryDate = new Date(entry.date);
-                const entryYear = entryDate.getFullYear().toString();
-                const entryMonth = String(entryDate.getMonth() + 1).padStart(2, '0');
-                
-                const matchesYear = !yearFilter || entryYear === yearFilter;
-                const matchesMonth = !monthFilter || entryMonth === monthFilter;
-                const matchesSearch = !searchQuery || 
-                    entry.detail.toLowerCase().includes(searchQuery) ||
-                    entry.phone.includes(searchQuery) ||
-                    entry.incident.toLowerCase().includes(searchQuery) ||
-                    entry.onsite.toLowerCase().includes(searchQuery) ||
-                    entry.receiver.toLowerCase().includes(searchQuery);
-
-                return matchesYear && matchesMonth && matchesSearch;
-            });
-
-            // เรียงลำดับตามวันที่ (ใหม่ไปเก่า)
-            filteredEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            if (filteredEntries.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="9" class="no-data">ไม่พบข้อมูลที่ตรงกับเงื่อนไข</td></tr>';
-                return;
-            }
-
-            tableBody.innerHTML = filteredEntries.map((entry, index) => {
-                const formattedDate = formatThaiDate(entry.date);
-                const formattedTime = formatThaiTime(entry.time);
-                
-                if (editingId === entry.id) {
-                    return `
-                        <tr>
-                            <td>${index + 1}</td>
-                            <td><input type="date" id="edit-date-${entry.id}" value="${entry.date}" class="edit-input"></td>
-                            <td><input type="time" id="edit-time-${entry.id}" value="${entry.time}" class="edit-input"></td>
-                            <td><textarea id="edit-detail-${entry.id}" class="edit-textarea">${entry.detail}</textarea></td>
-                            <td><input type="tel" id="edit-phone-${entry.id}" value="${entry.phone}" class="edit-input"></td>
-                            <td><input type="text" id="edit-incident-${entry.id}" value="${entry.incident}" class="edit-input"></td>
-                            <td><input type="text" id="edit-onsite-${entry.id}" value="${entry.onsite}" class="edit-input"></td>
-                            <td><input type="text" id="edit-receiver-${entry.id}" value="${entry.receiver}" class="edit-input"></td>
-                            <td>
-                                <button class="btn btn-save" onclick="saveEdit(${entry.id})">
-                                    💾 บันทึก
-                                </button>
-                                <button class="btn btn-cancel" onclick="cancelEdit()">
-                                    ❌ ยกเลิก
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                } else {
-                    return `
-                        <tr>
-                            <td>${index + 1}</td>
-                            <td>${formattedDate}</td>
-                            <td>${formattedTime}</td>
-                            <td>${entry.detail}</td>
-                            <td>${entry.phone}</td>
-                            <td>${entry.incident}</td>
-                            <td>${entry.onsite}</td>
-                            <td>${entry.receiver}</td>
-                            <td>
-                                <button class="btn btn-edit" onclick="editEntry(${entry.id})">
-                                    ✏️ แก้ไข
-                                </button>
-                                <button class="btn btn-delete" onclick="deleteEntry(${entry.id})">
-                                    🗑️ ลบ
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                }
-            }).join('');
-        }
-
-        // จัดรูปแบบวันที่เป็นภาษาไทย
-        function formatThaiDate(dateString) {
-            const date = new Date(dateString);
-            const thaiMonths = [
-                'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
-                'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
-            ];
-            
-            const day = date.getDate();
-            const month = thaiMonths[date.getMonth()];
-            const year = date.getFullYear() + 543;
-            
-            return `${day} ${month} ${year}`;
-        }
-
-        // จัดรูปแบบเวลาเป็นภาษาไทย
-        function formatThaiTime(timeString) {
-            if (!timeString) return '';
-            const [hours, minutes] = timeString.split(':');
-            return `${hours}:${minutes} น.`;
-        }
-
-        // อัปเดตตัวกรองปี
-        function updateYearFilter() {
-            const yearFilter = document.getElementById('yearFilter');
-            const years = [...new Set(workEntries.map(entry => new Date(entry.date).getFullYear()))];
-            years.sort((a, b) => b - a);
-
-            const currentValue = yearFilter.value;
-            yearFilter.innerHTML = '<option value="">ทั้งหมด</option>';
-            
-            years.forEach(year => {
-                const option = document.createElement('option');
-                option.value = year;
-                option.textContent = year + 543;
-                yearFilter.appendChild(option);
-            });
-
-            yearFilter.value = currentValue;
-        }
-
-        // อัปเดตสรุปข้อมูล
-        function updateSummary() {
-            const today = new Date();
-            const todayString = today.toISOString().split('T')[0];
-            const thisMonth = today.getMonth();
-            const thisYear = today.getFullYear();
-
-            const totalCount = workEntries.length;
-            const monthCount = workEntries.filter(entry => {
-                const entryDate = new Date(entry.date);
-                return entryDate.getMonth() === thisMonth && entryDate.getFullYear() === thisYear;
-            }).length;
-            const todayCount = workEntries.filter(entry => entry.date === todayString).length;
-
-            document.getElementById('totalCount').textContent = totalCount;
-            document.getElementById('monthCount').textContent = monthCount;
-            document.getElementById('todayCount').textContent = todayCount;
-        }
-
-        // Event Listeners
-        document.getElementById('yearFilter').addEventListener('change', updateDisplay);
-        document.getElementById('monthFilter').addEventListener('change', updateDisplay);
-        document.getElementById('searchInput').addEventListener('input', updateDisplay);
-
-        // กด Enter ในฟอร์ม
-        document.getElementById('detailInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                addEntry();
-            }
-        });
-
-        // เริ่มต้น
-        updateSummary();
-    </script>
-</body>
-</html>
+            const date = document.getElementById(`edit-date-${id}`).value;
+            const time = document.getElementById(`edit-time-${id}`).value;
